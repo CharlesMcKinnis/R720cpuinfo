@@ -81,7 +81,7 @@ while allclear == 0:
     sys.stdout.write("%s" % (ansi.HOME,))
     # assume all the CPUs are good (allclear), then test for lower states. Exit if they are all clear.
     allclear=1
-    for key in cpuspeed:
+    for key, value in sorted(cpuspeed.items()):
         # "stuck" CPUs tend to stay at 1200MHz, so flag those as red
         # If the CPU hit the model's max, or 1 over max if it is static, flag it green
         # If the CPU is in between, mark it yellow
