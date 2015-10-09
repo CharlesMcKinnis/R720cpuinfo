@@ -96,6 +96,6 @@ while allclear == 0:
             allclear=0
         print "Max observed speed: %s%s%s" % (status_color,cpuspeed[key]["mhz"],ansi.ENDC)
     infile.close()
-    print "." * cycle_counter
+    print "%4d cycles%s" % (cycle_counter, "." * (cycle_counter/10))
     cycle_counter+=1
     sleep(.1)
