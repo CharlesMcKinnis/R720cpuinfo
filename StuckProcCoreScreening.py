@@ -8,6 +8,7 @@ monitor /proc/cpuinfo and track for changes
 import re
 from time import sleep
 import sys
+import argparse
 
 class AutoVivification(dict):
     """Implementation of perl's autovivification feature."""
@@ -42,33 +43,80 @@ class ansi:
     UNDERLINE = '\033[4m'
     CLR = '\033[2J'
     HOME = '\033[H'
+    def clear(self):
+        sys.stdout.write("%s%s" % (ansi.CLR,ansi.HOME))
+    def home(self):
+        sys.stdout.write("%s" % ansi.HOME)
 
-def ScreenPrint(cpuspeed,cycle_counter):
+def all_clear(cpuspeed):
     allclear = 1
-    sys.stdout.write("%s" % (ansi.HOME,))
+    for key in cpuspeed:
+        if cpuspeed[key]["mhz"]==1200:
+            allclear=0
+        elif not cpuspeed[key]["mhz"] >= cpuspeed[key]["maxmhz"]:
+            allclear=0
+    return(allclear)
+
+def screen_print(cpuspeed, cycle_counter, **kwargs):
+    """
+    kwargs:
+    clear_screen = True
+    Clear the screen instead of just going to home
+    
+    no_ansi = True
+    Omit ansi characters for home, clear screen and colors
+    
+    no_runtime = True
+    Do not print "ctrl+c" and seconds runtime
+    
+    """
+    if "clear_screen" in kwargs:
+        sys.stdout.write("%s%s" % (ansi.CLR,ansi.HOME))
+    elif not "no_ansi" in kwargs:
+        sys.stdout.write("%s" % (ansi.HOME,))
     print "A healthy and busy system should show MHz in increments of 100 (or XX01 at full speed) and hit full speed on all CPUs in 30-60 seconds.\n"
     for key, value in sorted(cpuspeed.items()):
         # "stuck" CPUs tend to stay at 1200MHz, so flag those as red
         # If the CPU hit the model's max, or 1 over max if it is static, flag it green
         # If the CPU is in between, mark it yellow
         print "CPU : %s, Model: %s, Max: %s" % (key,cpuspeed[key]["model"],cpuspeed[key]["maxmhz"])
-        if cpuspeed[key]["mhz"]==1200:
-            status_color=ansi.RED
-            allclear=0
-        elif cpuspeed[key]["mhz"] >= cpuspeed[key]["maxmhz"]:
-            status_color=ansi.GREEN
+        if not "no_ansi" in kwargs:
+            if cpuspeed[key]["mhz"]==1200:
+                status_color=ansi.RED
+            elif not cpuspeed[key]["mhz"] >= cpuspeed[key]["maxmhz"]:
+                status_color=ansi.YELLOW
+            else:
+                status_color=ansi.GREEN
         else:
-            status_color=ansi.YELLOW
-            allclear=0
+            status_color=""
         print "Max observed speed: %s%s%s" % (status_color,cpuspeed[key]["mhz"],ansi.ENDC)
-    print "\nCtrl+C to exit, Runtime: %5.1f seconds" % (float(cycle_counter)/10,)
+    if not "no_runtime" in kwargs:
+        print "\nCtrl+C to exit, Runtime: %5.1f seconds" % (float(cycle_counter)/10,)
     return(allclear)
 
-cpuspeed = AutoVivification()
-cycle_counter=0
-allclear=0
+parser = argparse.ArgumentParser()
+parser.add_argument("-r","--runtime", help="Maximum number of seconds to watch the CPUs before ending",
+                    type=int)
+parser.add_argument("-s","--silent",
+                    help="No output, return code of 0 if CPUs are clear, and non-zero if the CPUs do not hit max within the runtime specified. Default 30 seconds, use --runtime to specify the duration.",
+                    action="store_true")
+parser.add_argument("-b","--batch", help="Run for a time, then output results. Default 30 seconds, use --runtime to specify the duration.",
+                    action="store_true")
+args = parser.parse_args()
 
-sys.stdout.write("%s%s" % (ansi.CLR,ansi.HOME))
+if (args.silent or args.batch) and not args.runtime:
+    args.runtime=30
+    pass
+if args.batch:
+    pass
+
+cpuspeed = AutoVivification()
+cycle_counter = 0
+allclear = 0
+max_seconds = 600
+
+if not (args.silent or args.batch):
+    sys.stdout.write("%s%s" % (ansi.CLR,ansi.HOME))
 
 try:
     while allclear == 0:
@@ -101,11 +149,32 @@ try:
                 else:
                     cpuspeed[cpu]["mhz"]=max(cpuspeed[cpu]["mhz"],int(result.group(2)))
         # assume all the CPUs are good (allclear), then test for lower states. Exit if they are all clear.
-        allclear = ScreenPrint(cpuspeed,cycle_counter)
-    
+        allclear = all_clear(cpuspeed)
+        if not (args.silent or args.batch):
+            screen_print(cpuspeed, cycle_counter)
+        if args.runtime and (cycle_counter/10 >= args.runtime):
+            allclear = 2
         infile.close()
         cycle_counter+=1
         sleep(.1)
 except KeyboardInterrupt:
-    allclear = ScreenPrint(cpuspeed,cycle_counter)
-    sys.exit(0)
+    #allclear = all_clear(cpuspeed)
+    screen_print(cpuspeed, cycle_counter)
+    sys.exit(128)
+
+if args.batch:
+    screen_print(cpuspeed, cycle_counter, no_ansi = True, no_runtime = True)
+    pass
+
+if allclear==1:
+    if not args.silent:
+        print "All CPUs cleared in %d seconds" % (cycle_counter/10)
+    else:
+        sys.exit(0)
+elif allclear==2:
+    plural=""
+    if cycle_counter/10 > 1:
+        plural="s"
+    if not args.silent:
+        print "CPUs did not clear during the test run, stopped after %d second%s" % ((cycle_counter/10), plural)
+    sys.exit(1)
