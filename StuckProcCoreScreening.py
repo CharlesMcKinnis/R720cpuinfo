@@ -102,20 +102,23 @@ parser.add_argument("-s","--silent",
                     action="store_true")
 parser.add_argument("-b","--batch", help="Run for a time, then output results. Default 30 seconds, use --runtime to specify the duration.",
                     action="store_true")
+parser.add_argument("--plaintext", help="ANSI control characters are omitted for colors and screen clear/home.",
+                    action="store_true")
 args = parser.parse_args()
 
 if (args.silent or args.batch) and not args.runtime:
-    args.runtime=30
+    args.runtime = 30
     pass
+if args.batch:
+    args.plaintext = True
 if args.batch:
     pass
 
 cpuspeed = AutoVivification()
 cycle_counter = 0
 allclear = 0
-max_seconds = 600
 
-if not (args.silent or args.batch):
+if not (args.silent or args.plaintext):
     sys.stdout.write("%s%s" % (ansi.CLR,ansi.HOME))
 
 try:
@@ -151,7 +154,10 @@ try:
         # assume all the CPUs are good (allclear), then test for lower states. Exit if they are all clear.
         allclear = all_clear(cpuspeed)
         if not (args.silent or args.batch):
-            screen_print(cpuspeed, cycle_counter)
+            if args.plaintext:
+                screen_print(cpuspeed, cycle_counter, no_ansi = True)
+            else:
+                screen_print(cpuspeed, cycle_counter)
         if args.runtime and (cycle_counter/10 >= args.runtime):
             allclear = 2
         infile.close()
@@ -162,7 +168,7 @@ except KeyboardInterrupt:
     screen_print(cpuspeed, cycle_counter)
     sys.exit(128)
 
-if args.batch:
+if args.plaintext:
     screen_print(cpuspeed, cycle_counter, no_ansi = True, no_runtime = True)
     pass
 
