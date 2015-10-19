@@ -43,44 +43,10 @@ class ansi:
     CLR = '\033[2J'
     HOME = '\033[H'
 
-cpuspeed = AutoVivification()
-cycle_counter=0
-allclear=0
-
-sys.stdout.write("%s%s" % (ansi.CLR,ansi.HOME))
-
-while allclear == 0:
-    infile = open('/proc/cpuinfo', 'r')
-    cpuinfo = infile.readlines()
-    cpu=""
-    for line in cpuinfo:
-        # cpu
-        # model
-        # mhz
-        result = re.match('(processor|model name|cpu MHz)[\s:]+(\d*)(.*)', line.strip())
-        # group 1 is category
-        # group 2 is numbers (speed or processor number)
-        # group 3 is anything following numbers (model name)
-
-        if not result:
-            continue
-        if result.group(1)=="processor":
-            # which CPU core are we talking about?
-            cpu = int(result.group(2))
-        elif result.group(1)=="model name" and not "model" in cpuspeed[cpu]:
-            # we only set the model if it isn't already set, and we get the max speed at the same time too
-            cpuspeed[cpu]["model"]=result.group(3)
-            result = re.search('([\d\.]+)GHz', line.strip())
-            cpuspeed[cpu]["maxmhz"]=int(float(re.search('([\d\.]+)GHz', line.strip()).group(1))*1000)
-        elif result.group(1)=="cpu MHz":
-            # you can't reference the variable that isn't set, so max alone doesn't work
-            if not "mhz" in cpuspeed[cpu]:
-                cpuspeed[cpu]["mhz"]=int(result.group(2))
-            else:
-                cpuspeed[cpu]["mhz"]=max(cpuspeed[cpu]["mhz"],int(result.group(2)))
+def ScreenPrint(cpuspeed,cycle_counter):
+    allclear = 1
     sys.stdout.write("%s" % (ansi.HOME,))
-    # assume all the CPUs are good (allclear), then test for lower states. Exit if they are all clear.
-    allclear=1
+    print "A healthy and busy system should show MHz in increments of 100 (or XX01 at full speed) and hit full speed on all CPUs in 30-60 seconds.\n"
     for key, value in sorted(cpuspeed.items()):
         # "stuck" CPUs tend to stay at 1200MHz, so flag those as red
         # If the CPU hit the model's max, or 1 over max if it is static, flag it green
@@ -95,7 +61,51 @@ while allclear == 0:
             status_color=ansi.YELLOW
             allclear=0
         print "Max observed speed: %s%s%s" % (status_color,cpuspeed[key]["mhz"],ansi.ENDC)
-    infile.close()
-    print "%4d cycles%s" % (cycle_counter, "." * (cycle_counter/10))
-    cycle_counter+=1
-    sleep(.1)
+    print "\nCtrl+C to exit, Runtime: %5.1f seconds" % (float(cycle_counter)/10,)
+    return(allclear)
+
+cpuspeed = AutoVivification()
+cycle_counter=0
+allclear=0
+
+sys.stdout.write("%s%s" % (ansi.CLR,ansi.HOME))
+
+try:
+    while allclear == 0:
+        infile = open('/proc/cpuinfo', 'r')
+        cpuinfo = infile.readlines()
+        cpu=""
+        for line in cpuinfo:
+            # cpu
+            # model
+            # mhz
+            result = re.match('(processor|model name|cpu MHz)[\s:]+(\d*)(.*)', line.strip())
+            # group 1 is category
+            # group 2 is numbers (speed or processor number)
+            # group 3 is anything following numbers (model name)
+    
+            if not result:
+                continue
+            if result.group(1)=="processor":
+                # which CPU core are we talking about?
+                cpu = int(result.group(2))
+            elif result.group(1)=="model name" and not "model" in cpuspeed[cpu]:
+                # we only set the model if it isn't already set, and we get the max speed at the same time too
+                cpuspeed[cpu]["model"]=result.group(3)
+                result = re.search('([\d\.]+)GHz', line.strip())
+                cpuspeed[cpu]["maxmhz"]=int(float(re.search('([\d\.]+)GHz', line.strip()).group(1))*1000)
+            elif result.group(1)=="cpu MHz":
+                # you can't reference the variable that isn't set, so max alone doesn't work
+                if not "mhz" in cpuspeed[cpu]:
+                    cpuspeed[cpu]["mhz"]=int(result.group(2))
+                else:
+                    cpuspeed[cpu]["mhz"]=max(cpuspeed[cpu]["mhz"],int(result.group(2)))
+        # assume all the CPUs are good (allclear), then test for lower states. Exit if they are all clear.
+        allclear = ScreenPrint(cpuspeed,cycle_counter)
+    
+        infile.close()
+        cycle_counter+=1
+        sleep(.1)
+except KeyboardInterrupt:
+    allclear = ScreenPrint(cpuspeed,cycle_counter)
+    sys.exit(0)
