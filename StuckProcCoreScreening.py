@@ -53,7 +53,7 @@ def all_clear(cpuspeed):
     for key in cpuspeed:
         if cpuspeed[key]["mhz"]==1200:
             allclear=0
-        elif not cpuspeed[key]["mhz"] >= cpuspeed[key]["maxmhz"]:
+        elif not cpuspeed[key]["mhz"] >= (cpuspeed[key]["maxmhz"]*.99):
             allclear=0
     return(allclear)
 
