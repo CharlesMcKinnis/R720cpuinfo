@@ -83,7 +83,7 @@ def screen_print(cpuspeed, cycle_counter, **kwargs):
         if not "no_ansi" in kwargs:
             if cpuspeed[key]["mhz"]==1200:
                 status_color=ansi.RED
-            elif not cpuspeed[key]["mhz"] >= cpuspeed[key]["maxmhz"]:
+            elif not cpuspeed[key]["mhz"] >= (cpuspeed[key]["maxmhz"]*.99):
                 status_color=ansi.YELLOW
             else:
                 status_color=ansi.GREEN
