@@ -8,7 +8,14 @@ monitor /proc/cpuinfo and track for changes
 import re
 from time import sleep
 import sys
-import argparse
+try:
+    import argparse
+    ARGPARSE = True
+except:
+    ARGPARSE = False
+
+class argsAlt(object):
+    pass
 
 class AutoVivification(dict):
     """Implementation of perl's autovivification feature."""
@@ -94,17 +101,25 @@ def screen_print(cpuspeed, cycle_counter, **kwargs):
         print "\nCtrl+C to exit, Runtime: %5.1f seconds" % (float(cycle_counter)/10,)
     return(allclear)
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-r","--runtime", help="Maximum number of seconds to watch the CPUs before ending",
-                    type=int)
-parser.add_argument("-s","--silent",
-                    help="No output, return code of 0 if CPUs are clear, and non-zero if the CPUs do not hit max within the runtime specified. Default 30 seconds, use --runtime to specify the duration.",
-                    action="store_true")
-parser.add_argument("-b","--batch", help="Run for a time, then output results. Default 30 seconds, use --runtime to specify the duration.",
-                    action="store_true")
-parser.add_argument("--plaintext", help="ANSI control characters are omitted for colors and screen clear/home.",
-                    action="store_true")
-args = parser.parse_args()
+if ARGPARSE:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r","--runtime", help="Maximum number of seconds to watch the CPUs before ending",
+                        type=int)
+    parser.add_argument("-s","--silent",
+                        help="No output, return code of 0 if CPUs are clear, and non-zero if the CPUs do not hit max within the runtime specified. Default 30 seconds, use --runtime to specify the duration.",
+                        action="store_true")
+    parser.add_argument("-b","--batch", help="Run for a time, then output results. Default 30 seconds, use --runtime to specify the duration.",
+                        action="store_true")
+    parser.add_argument("--plaintext", help="ANSI control characters are omitted for colors and screen clear/home.",
+                        action="store_true")
+    args = parser.parse_args()
+else:
+    args = argsAlt()
+    # dummy class in the event argparse is not available on the system
+
+if not hasattr(sys, 'ps1') and not sys.flags.interactive:
+    # not interactively
+    args.batch = True
 
 if (args.silent or args.batch) and not args.runtime:
     args.runtime = 30
