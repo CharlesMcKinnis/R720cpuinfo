@@ -117,8 +117,9 @@ else:
     args = argsAlt()
     # dummy class in the event argparse is not available on the system
 
-if not hasattr(sys, 'ps1') and not sys.flags.interactive:
+if not sys.stdout.isatty():
     # not interactively
+    print "batch mode"
     args.batch = True
 
 if (args.silent or args.batch) and not args.runtime:
