@@ -81,7 +81,7 @@ def screen_print(cpuspeed, cycle_counter, **kwargs):
         sys.stdout.write("%s%s" % (ansi.CLR,ansi.HOME))
     elif not "no_ansi" in kwargs:
         sys.stdout.write("%s" % (ansi.HOME,))
-    print "A healthy and busy system should show MHz in increments of 100 (or XX01 at full speed) and hit full speed on all CPUs in 30-60 seconds.\n"
+    print "A healthy and busy system should hit full speed on all CPUs in 30-60 seconds.\n"
     for key, value in sorted(cpuspeed.items()):
         # "stuck" CPUs tend to stay at 1200MHz, so flag those as red
         # If the CPU hit the model's max, or 1 over max if it is static, flag it green
