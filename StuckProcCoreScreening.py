@@ -115,6 +115,10 @@ if ARGPARSE:
     args = parser.parse_args()
 else:
     args = argsAlt()
+    args.runtime = None
+    args.silent = None
+    args.batch = None
+    args.plaintext = None
     # dummy class in the event argparse is not available on the system
 
 if not sys.stdout.isatty():
